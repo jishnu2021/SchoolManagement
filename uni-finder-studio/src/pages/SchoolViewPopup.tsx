@@ -43,10 +43,10 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api"
     
     setImageLoading(true);
     try {
-      const response = await fetch(`/api/images/school/${school.id}?width=600&height=400&crop=fill&format=webp&quality=auto`);
+      const response = await fetch(`${API_BASE_URL}/api/images/school/${school.id}?width=600&height=400&crop=fill&format=webp&quality=auto`);
       const data = await response.json();
       if (data.success) {
-        setImageUrl(data.data.transformedUrl);
+        setImageUrl(data.transformedUrl);
       }
     } catch (error) {
       console.error('Error fetching image:', error);
