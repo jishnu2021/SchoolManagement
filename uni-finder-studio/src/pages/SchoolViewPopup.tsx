@@ -6,7 +6,7 @@ const SchoolViewPopup = ({ school, isOpen, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
   const [imageLoading, setImageLoading] = useState(true);
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const API_BASE_URL = import.meta.env.VITE_API_URL;
   useEffect(() => {
     if (isOpen && school) {
       fetchDescription();
