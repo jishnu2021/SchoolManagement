@@ -1,0 +1,125 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* School Management App Design System */
+
+@layer base {
+  :root {
+    --background: 255 255 100%;
+    --foreground: 222 84% 5%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 84% 5%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 84% 5%;
+
+    --primary: 216 98% 52%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 216 98% 65%;
+
+    --secondary: 210 17% 95%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 17% 95%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 39 100% 93%;
+    --accent-foreground: 39 100% 20%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 216 98% 52%;
+
+    --radius: 0.75rem;
+
+    /* Education-themed gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(216 98% 52%), hsl(216 98% 65%));
+    --gradient-hero: linear-gradient(135deg, hsl(216 98% 52%), hsl(264 89% 58%));
+    --gradient-card: linear-gradient(135deg, hsl(0 0% 100%), hsl(210 17% 98%));
+    
+    /* Shadows with education theme */
+    --shadow-card: 0 4px 25px -2px hsl(216 98% 52% / 0.08);
+    --shadow-form: 0 8px 30px -8px hsl(216 98% 52% / 0.15);
+    --shadow-image: 0 10px 40px -10px hsl(216 98% 52% / 0.2);
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 222 84% 5%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 84% 5%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 84% 5%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 216 98% 65%;
+    --primary-foreground: 222 47% 11%;
+    --primary-glow: 216 98% 75%;
+
+    --secondary: 217 33% 18%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 33% 18%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 39 100% 15%;
+    --accent-foreground: 39 100% 90%;
+
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 33% 18%;
+    --input: 217 33% 18%;
+    --ring: 216 98% 65%;
+
+    /* Dark theme gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(216 98% 65%), hsl(216 98% 75%));
+    --gradient-hero: linear-gradient(135deg, hsl(216 98% 65%), hsl(264 89% 70%));
+    --gradient-card: linear-gradient(135deg, hsl(222 84% 5%), hsl(217 33% 10%));
+    
+    /* Dark theme shadows */
+    --shadow-card: 0 4px 25px -2px hsl(216 98% 52% / 0.15);
+    --shadow-form: 0 8px 30px -8px hsl(216 98% 52% / 0.25);
+    --shadow-image: 0 10px 40px -10px hsl(216 98% 52% / 0.3);
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
