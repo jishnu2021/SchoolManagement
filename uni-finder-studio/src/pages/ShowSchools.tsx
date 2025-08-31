@@ -15,6 +15,7 @@ import {
 import { School, Search, Plus, MapPin, Phone, Mail, Eye, Edit, Trash2, Upload, X, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import SchoolViewPopup from "./SchoolViewPopup"; // Import the SchoolViewPopup component
 
 interface SchoolData {
   id: number;
@@ -47,12 +48,14 @@ const ShowSchools = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
+  // View popup states
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [selectedSchoolForView, setSelectedSchoolForView] = useState<SchoolData | null>(null);
   
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [selectedSchool, setSelectedSchool] = useState<SchoolData | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-
 
   const {
     register,
@@ -64,7 +67,6 @@ const ShowSchools = () => {
   } = useForm<UpdateSchoolFormData>();
 
   const watchedImage = watch("image");
-
  
   useEffect(() => {
     if (watchedImage && watchedImage[0]) {
@@ -109,14 +111,17 @@ const ShowSchools = () => {
     }
   };
 
+  // Handle View School
+  const handleViewSchool = (school: SchoolData) => {
+    setSelectedSchoolForView(school);
+    setIsViewModalOpen(true);
+  };
 
   const HandleUpdateMethod = async (schoolId: number, schoolName: string) => {
     try {
-
       let schoolToUpdate = schools.find(school => school.id === schoolId);
       
       if (!schoolToUpdate) {
-        
         const response = await fetch(`${API_BASE_URL}/schools/${schoolId}`);
         
         if (!response.ok) {
@@ -130,10 +135,8 @@ const ShowSchools = () => {
           throw new Error(result.message || 'School not found');
         }
       }
-
       
       setSelectedSchool(schoolToUpdate);
-      
       
       setValue('name', schoolToUpdate.name);
       setValue('address', schoolToUpdate.address);
@@ -142,13 +145,11 @@ const ShowSchools = () => {
       setValue('contact', schoolToUpdate.contact);
       setValue('email_id', schoolToUpdate.email_id);
       
-      
       if (schoolToUpdate.image) {
         setImagePreview(getImageUrl(schoolToUpdate.image));
       } else {
         setImagePreview(null);
       }
-      
       
       setIsUpdateModalOpen(true);
       
@@ -161,15 +162,12 @@ const ShowSchools = () => {
       });
     }
   };
-
   
   const onUpdateSubmit = async (data: UpdateSchoolFormData) => {
     if (!selectedSchool) return;
 
     setIsUpdating(true);
-
     try {
-      
       const formData = new FormData();
       formData.append('name', data.name);
       formData.append('address', data.address);
@@ -178,11 +176,9 @@ const ShowSchools = () => {
       formData.append('contact', data.contact);
       formData.append('email_id', data.email_id);
       
-      
       if (data.image && data.image[0]) {
         formData.append('image', data.image[0]);
       }
-
       
       const response = await fetch(`${API_BASE_URL}/schools/${selectedSchool.id}`, {
         method: 'PUT',
@@ -195,7 +191,6 @@ const ShowSchools = () => {
         throw new Error(result.message || result.error || 'Failed to update school');
       }
 
-
       const updatedSchools = schools.map(school => 
         school.id === selectedSchool.id 
           ? { ...school, ...result.data }
@@ -204,7 +199,6 @@ const ShowSchools = () => {
       
       setSchools(updatedSchools);
       
- 
       const updatedFiltered = updatedSchools.filter(school =>
         school.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         school.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -234,7 +228,6 @@ const ShowSchools = () => {
     }
   };
 
-
   const closeUpdateModal = () => {
     setIsUpdateModalOpen(false);
     setSelectedSchool(null);
@@ -257,6 +250,7 @@ const ShowSchools = () => {
       if (!response.ok) {
         throw new Error(result.message || 'Failed to delete school');
       }
+
       const updatedSchools = schools.filter(school => school.id !== schoolId);
       setSchools(updatedSchools);
       setFilteredSchools(updatedSchools.filter(school =>
@@ -279,13 +273,20 @@ const ShowSchools = () => {
     }
   };
 
+  // Updated getImageUrl function to use the API endpoint
   const getImageUrl = (imagePath: string) => {
-    if (imagePath.startsWith('http')) {
-      return imagePath;
-    }
-    
-    return `${API_BASE_URL.replace('/api', '')}/uploads/schools/${imagePath}`;
-  };
+  console.log("The yrk us :",imagePath)
+  if (!imagePath) {
+    return "https://images.unsplash.com/photo-1562774053-701939374585?w=400&h=250&fit=crop";
+  }
+
+   if (imagePath.startsWith('http')) {
+    return imagePath;
+  }
+  // Return backend URL directly (browser will call it)
+  return `${API_BASE_URL}/images/${imagePath}/url?width=400&height=250&crop=fill&quality=auto&format=webp`;
+};
+
 
   useEffect(() => {
     fetchSchools();
@@ -343,13 +344,10 @@ const ShowSchools = () => {
             </div>
           </div>
 
-
           <div className="mb-6 flex justify-between items-center">
-
             <p className="text-muted-foreground">
               Showing {filteredSchools.length} of {schools.length} schools
             </p>
-
             <div className="flex items-center gap-2">
               <Button
                 onClick={fetchSchools}
@@ -359,7 +357,6 @@ const ShowSchools = () => {
               >
                 Refresh
               </Button>
-
               <Link to="/add-school">
                 <Button className="bg-gradient-to-r from-primary to-primary-glow hover:from-primary/90 hover:to-primary-glow/90 transition-all duration-200">
                   <Plus className="h-4 w-4 mr-2" />
@@ -441,6 +438,10 @@ const ShowSchools = () => {
                         variant="outline" 
                         size="sm"
                         className="flex-1 group-hover:border-primary group-hover:text-primary transition-colors duration-200"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleViewSchool(school);
+                        }}
                       >
                         <Eye className="h-4 w-4 mr-1" />
                         View
@@ -476,6 +477,20 @@ const ShowSchools = () => {
         </div>
       </div>
 
+      {/* School View Popup */}
+      {selectedSchoolForView && (
+        <SchoolViewPopup
+          school={selectedSchoolForView}
+          isOpen={isViewModalOpen}
+          onClose={() => {
+            setIsViewModalOpen(false);
+            setSelectedSchoolForView(null);
+          }}
+          // getImageUrl={getImageUrl}
+        />
+      )}
+
+      {/* Update School Dialog */}
       <Dialog open={isUpdateModalOpen} onOpenChange={setIsUpdateModalOpen}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -489,7 +504,6 @@ const ShowSchools = () => {
           </DialogHeader>
 
           <form onSubmit={handleSubmit(onUpdateSubmit)} className="space-y-4">
-            
             <div className="space-y-2">
               <Label htmlFor="update-name" className="text-sm font-medium">
                 School Name *
@@ -510,7 +524,6 @@ const ShowSchools = () => {
               )}
             </div>
 
-
             <div className="space-y-2">
               <Label htmlFor="update-address" className="text-sm font-medium">
                 Address *
@@ -527,7 +540,6 @@ const ShowSchools = () => {
               )}
             </div>
             
-          
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="update-city" className="text-sm font-medium">
@@ -544,7 +556,6 @@ const ShowSchools = () => {
                   <p className="text-sm text-red-600">{errors.city.message}</p>
                 )}
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="update-state" className="text-sm font-medium">
                   State *
@@ -583,7 +594,6 @@ const ShowSchools = () => {
                   <p className="text-sm text-red-600">{errors.contact.message}</p>
                 )}
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="update-email" className="text-sm font-medium">
                   Email Address *
@@ -605,7 +615,6 @@ const ShowSchools = () => {
                 )}
               </div>
             </div>
-
    
             <div className="space-y-2">
               <Label htmlFor="update-image" className="text-sm font-medium">
@@ -629,7 +638,6 @@ const ShowSchools = () => {
                       alt="School preview"
                       className="h-32 w-48 object-cover rounded-lg border shadow-sm"
                     />
-              
                     <div className="mt-2">
                       <p className="text-xs text-muted-foreground">
                         {watchedImage && watchedImage[0] ? 'New image selected' : 'Current image'}

@@ -3,6 +3,7 @@ const cors = require('cors');
 const path = require('path');
 const { initializeDatabase } = require('./config/db.js');
 const schoolRoutes = require('./routes/school-routes.js');
+const imageRoutes = require('./routes/image-routes.js');
 require('dotenv').config();
 
 const app = express();
@@ -20,7 +21,7 @@ const asyncHandler = (fn) => (req, res, next) => {
 };
 
 app.use('/api/schools', schoolRoutes);
-
+app.use('/api/images', imageRoutes);
 
 app.get('/api/health', (req, res) => {
   res.status(200).json({

@@ -1,5 +1,4 @@
-
-const { pool } = require('../config/db');
+const { getPool } = require("../config/db");
 const Joi = require('joi');
 
 const schoolValidationSchema = Joi.object({
@@ -86,7 +85,8 @@ const schoolValidationSchema = Joi.object({
     .optional()
     .messages({
       'string.max': 'Image URL cannot exceed 500 characters'
-    })
+    }),
+
 });
 
 class School {
@@ -96,12 +96,18 @@ class School {
 
   static async create(schoolData) {
     try {
+      const pool = getPool();
+      if (!pool) {
+        throw new Error('Database connection not initialized');
+      }
+
       const { error, value } = this.validate(schoolData);
       if (error) {
         throw new Error(`Validation Error: ${error.details.map(detail => detail.message).join(', ')}`);
       }
 
       const { name, address, city, state, contact, email_id, image } = value;
+
       const [existingSchool] = await pool.execute(
         'SELECT id FROM schools WHERE email_id = ?',
         [email_id]
@@ -122,76 +128,28 @@ class School {
       throw error;
     }
   }
+
   static async findAll() {
     try {
-      const [rows] = await pool.execute("SELECT * FROM schools");
+      const pool = getPool();
+      if (!pool) {
+        throw new Error('Database connection not initialized');
+      }
+
+      const [rows] = await pool.execute("SELECT * FROM schools ORDER BY created_at DESC");
       return rows;
     } catch (error) {
       throw error;
     }
   }
-//   try {
-//     const { page = 1, limit = 10, search = '', city = '', state = '' } = options;
-//     const offset = (page - 1) * limit;
 
-//     let query = 'SELECT * FROM schools';
-//     let countQuery = 'SELECT COUNT(*) as total FROM schools WHERE 1=1';
-    
-//     const queryParams = [];
-//     const countParams = [];
-
-//     if (search) {
-//       query += ' AND (name LIKE ? OR address LIKE ? OR city LIKE ?)';
-//       countQuery += ' AND (name LIKE ? OR address LIKE ? OR city LIKE ?)';
-//       const searchTerm = `%${search}%`;
-//       queryParams.push(searchTerm, searchTerm, searchTerm);
-//       countParams.push(searchTerm, searchTerm, searchTerm);
-//     }
-
-//     if (city) {
-//       query += ' AND city LIKE ?';
-//       countQuery += ' AND city LIKE ?';
-//       queryParams.push(`%${city}%`);
-//       countParams.push(`%${city}%`);
-//     }
-
-//     if (state) {
-//       query += ' AND state LIKE ?';
-//       countQuery += ' AND state LIKE ?';
-//       queryParams.push(`%${state}%`);
-//       countParams.push(`%${state}%`);
-//     }
-    
-
-// query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
-// queryParams.push(safeLimit, safeOffset);
-
-//     // query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
-//     // queryParams.push(parseInt(limit), parseInt(offset));
-
-//     // Run queries
-//     const [schools] = await pool.execute(query, queryParams);
-//     const [countResult] = await pool.execute(countQuery, countParams);
-
-//     return {
-//       schools,
-//       pagination: {
-//         currentPage: parseInt(page),
-//         totalPages: Math.ceil(countResult[0].total / limit),
-//         totalSchools: countResult[0].total,
-//         hasNextPage: page < Math.ceil(countResult[0].total / limit),
-//         hasPrevPage: page > 1
-//       }
-//     };
-//   } catch (error) {
-//     throw error;
-//   }
-// }
-
-
-  // Find school by ID
   static async findById(id) {
     try {
+      const pool = getPool();
+      if (!pool) {
+        throw new Error('Database connection not initialized');
+      }
+
       if (!id || isNaN(id)) {
         throw new Error('Invalid school ID');
       }
@@ -213,33 +171,47 @@ class School {
 
   static async updateById(id, updateData) {
     try {
+      const pool = getPool();
+      if (!pool) {
+        throw new Error('Database connection not initialized');
+      }
+
       const { error, value } = this.validate(updateData);
       if (error) {
         throw new Error(`Validation Error: ${error.details.map(detail => detail.message).join(', ')}`);
       }
 
       const { name, address, city, state, contact, email_id, image } = value;
+
       const existingSchool = await this.findById(id);
       if (!existingSchool) {
         throw new Error('School not found');
       }
+
       if (email_id !== existingSchool.email_id) {
         const [emailCheck] = await pool.execute(
           'SELECT id FROM schools WHERE email_id = ? AND id != ?',
           [email_id, id]
         );
-
         if (emailCheck.length > 0) {
           throw new Error('A school with this email already exists');
         }
       }
-
       
       await pool.execute(
         `UPDATE schools 
          SET name = ?, address = ?, city = ?, state = ?, contact = ?, email_id = ?, image = ?
          WHERE id = ?`,
-        [name, address, city, state, contact, email_id, image || existingSchool.image, id]
+        [
+          name, 
+          address, 
+          city, 
+          state, 
+          contact, 
+          email_id, 
+          image || existingSchool.image, 
+          id
+        ]
       );
 
       return await this.findById(id);
@@ -250,6 +222,11 @@ class School {
 
   static async deleteById(id) {
     try {
+      const pool = getPool();
+      if (!pool) {
+        throw new Error('Database connection not initialized');
+      }
+
       const existingSchool = await this.findById(id);
       if (!existingSchool) {
         throw new Error('School not found');
@@ -268,23 +245,34 @@ class School {
 
   static async findByCity(city) {
     try {
+      const pool = getPool();
+      if (!pool) {
+        throw new Error('Database connection not initialized');
+      }
+
       const [schools] = await pool.execute(
         'SELECT * FROM schools WHERE city = ? ORDER BY name ASC',
         [city]
       );
+
       return schools;
     } catch (error) {
       throw error;
     }
   }
 
-
   static async findByState(state) {
     try {
+      const pool = getPool();
+      if (!pool) {
+        throw new Error('Database connection not initialized');
+      }
+
       const [schools] = await pool.execute(
         'SELECT * FROM schools WHERE state = ? ORDER BY name ASC',
         [state]
       );
+
       return schools;
     } catch (error) {
       throw error;

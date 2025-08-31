@@ -1,69 +1,73 @@
+const mysql = require("mysql2/promise");
+require("dotenv").config();
 
-const mysql = require('mysql2/promise');
-require('dotenv').config();
+const connectionUrl = process.env.DATABASE_URL 
+console.log("Using DB URL:", connectionUrl);
 
+const url = new URL(connectionUrl);
+const DB_NAME = process.env.DB_NAME || "schooldataset";
 
-const dbConfig = {
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME || 'school_management',
-  port: process.env.DB_PORT || 3306,
-  charset: 'utf8mb4',
-  timezone: '+00:00',
-  acquireTimeout: 60000,
-  timeout: 60000,
-  reconnect: true,
-  multipleStatements: false
-};
-
-
-const poolConfig = {
-  ...dbConfig,
+const baseConfig = {
+  host: url.hostname,
+  user: url.username,
+  password: url.password,
+  port: url.port,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  idleTimeout: 300000,
-  acquireTimeout: 60000
 };
 
-
-const pool = mysql.createPool(poolConfig);
+let pool;
 
 const testConnection = async () => {
   try {
     const connection = await pool.getConnection();
-    console.log('✅ Database connected successfully');
+    console.log("✅ Connected to DB:", connection.config.database);
     connection.release();
     return true;
-  } catch (error) {
-    console.error('❌ Database connection failed:', error.message);
+  } catch (err) {
+    console.error("❌ DB connection failed:", err.message);
     return false;
   }
 };
 
-
 const initializeDatabase = async () => {
   try {
-    await testConnection();
-    
-    const tempConfig = { ...dbConfig };
-    delete tempConfig.database;
-    const tempPool = mysql.createPool(tempConfig);
-    
-    await tempPool.execute(`CREATE DATABASE IF NOT EXISTS ${dbConfig.database}`);
+   
+    const tempPool = mysql.createPool(baseConfig);
+    await tempPool.query(`CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\``);
     await tempPool.end();
+
+    console.log("✅ Database ready:", DB_NAME);
+
     
-    console.log('✅ Database initialization completed');
-  } catch (error) {
-    console.error('❌ Database initialization failed:', error.message);
-    throw error;
+    pool = mysql.createPool({ ...baseConfig, database: DB_NAME });
+
+    
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS schools (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        address VARCHAR(500) NOT NULL,
+        city VARCHAR(100) NOT NULL,
+        state VARCHAR(100) NOT NULL,
+        contact VARCHAR(15) NOT NULL,
+        email_id VARCHAR(255) NOT NULL UNIQUE,
+        image VARCHAR(500),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+
+    console.log("✅ Schools table ready");
+  } catch (err) {
+    console.error("❌ Database initialization failed:", err.message);
+    throw err;
   }
 };
 
 module.exports = {
-  pool,
-  testConnection,
   initializeDatabase,
-  dbConfig
+  testConnection,
+  getPool: () => pool,
 };

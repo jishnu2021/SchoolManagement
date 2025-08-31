@@ -1,24 +1,20 @@
-
 const School = require('../models/SchoolModel');
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs').promises;
+const cloudinary = require('../config/cloudinary');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const axios = require('axios');
 
 
-const storage = multer.diskStorage({
-  destination: async (req, file, cb) => {
-    const uploadDir = 'uploads/schools';
-    try {
-      await fs.mkdir(uploadDir, { recursive: true });
-      cb(null, uploadDir);
-    } catch (error) {
-      cb(error);
-    }
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'school_images',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+    transformation: [
+      { width: 800, height: 600, crop: 'limit' },
+      { quality: 'auto' }
+    ]
   },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'school-' + uniqueSuffix + path.extname(file.originalname));
-  }
 });
 
 const fileFilter = (req, file, cb) => {
@@ -33,18 +29,19 @@ const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024, 
+    fileSize: 5 * 1024 * 1024, // 5MB limit
   }
 });
 
 class SchoolController {
- 
+
   static async createSchool(req, res) {
     try {
-      
       let imageValue = null;
+      
+      // Handle Cloudinary uploaded image
       if (req.file) {
-        imageValue = req.file.filename;
+        imageValue = req.file.path; // Cloudinary URL
       } else if (req.body.image && typeof req.body.image === 'string') {
         imageValue = req.body.image;
       }
@@ -59,6 +56,7 @@ class SchoolController {
         image: imageValue
       };
 
+
       const school = await School.create(schoolData);
 
       res.status(201).json({
@@ -68,6 +66,14 @@ class SchoolController {
       });
     } catch (error) {
       
+      if (req.file && req.file.public_id) {
+        try {
+          await cloudinary.uploader.destroy(req.file.public_id);
+        } catch (cleanupError) {
+          console.error('Error cleaning up uploaded image:', cleanupError);
+        }
+      }
+
       if (error.message.includes('Validation Error')) {
         return res.status(400).json({
           success: false,
@@ -76,7 +82,6 @@ class SchoolController {
         });
       }
 
-      
       if (error.message.includes('email already exists')) {
         return res.status(409).json({
           success: false,
@@ -94,25 +99,24 @@ class SchoolController {
     }
   }
 
-static async getAllSchools(req, res) {
-  try {
-    const schools = await School.findAll();
-    res.status(200).json({
-      success: true,
-      message: "Schools retrieved successfully",
-      data: schools
-    });
-  } catch (error) {
-    console.error("Error fetching schools:", error);
-    res.status(500).json({
-      success: false,
-      message: "Internal server error",
-      error: "Failed to fetch schools"
-    });
+  static async getAllSchools(req, res) {
+    try {
+      const schools = await School.findAll();
+      res.status(200).json({
+        success: true,
+        message: "Schools retrieved successfully",
+        data: schools
+      });
+    } catch (error) {
+      console.error("Error fetching schools:", error);
+      res.status(500).json({
+        success: false,
+        message: "Internal server error",
+        error: "Failed to fetch schools"
+      });
+    }
   }
-}
 
-  
   static async getSchoolById(req, res) {
     try {
       const { id } = req.params;
@@ -126,6 +130,7 @@ static async getAllSchools(req, res) {
       }
 
       const school = await School.findById(id);
+      console.log(school);
 
       if (!school) {
         return res.status(404).json({
@@ -162,6 +167,35 @@ static async getAllSchools(req, res) {
         });
       }
 
+      // Get existing school for image cleanup
+      const existingSchool = await School.findById(id);
+      if (!existingSchool) {
+        return res.status(404).json({
+          success: false,
+          message: 'School not found',
+          error: `No school found with ID: ${id}`
+        });
+      }
+
+      let imageValue = existingSchool.image;
+      
+      // Handle new image upload
+      if (req.file) {
+        imageValue = req.file.path; // New Cloudinary URL
+        
+        // Clean up old image from Cloudinary if it exists
+        if (existingSchool.image && existingSchool.image.includes('cloudinary')) {
+          try {
+            const publicId = existingSchool.image.split('/').pop().split('.')[0];
+            await cloudinary.uploader.destroy(`school_images/${publicId}`);
+          } catch (cleanupError) {
+            console.error('Error cleaning up old image:', cleanupError);
+          }
+        }
+      } else if (req.body.image && typeof req.body.image === 'string') {
+        imageValue = req.body.image;
+      }
+
       const updateData = {
         name: req.body.name,
         address: req.body.address,
@@ -169,8 +203,15 @@ static async getAllSchools(req, res) {
         state: req.body.state,
         contact: req.body.contact,
         email_id: req.body.email_id,
-        image: req.file ? req.file.filename : req.body.image
+        image: imageValue
       };
+
+      // Regenerate description if basic info changed
+      if (req.body.name !== existingSchool.name || 
+          req.body.address !== existingSchool.address ||
+          req.body.city !== existingSchool.city ||
+          req.body.state !== existingSchool.state) {
+      }
 
       const school = await School.updateById(id, updateData);
 
@@ -225,14 +266,28 @@ static async getAllSchools(req, res) {
         });
       }
 
-      const deleted = await School.deleteById(id);
-
-      if (!deleted) {
+      // Get school data before deletion for image cleanup
+      const school = await School.findById(id);
+      if (!school) {
         return res.status(404).json({
           success: false,
           message: 'School not found',
           error: `No school found with ID: ${id}`
         });
+      }
+
+      const deleted = await School.deleteById(id);
+
+      if (deleted) {
+        // Clean up image from Cloudinary
+        if (school.image && school.image.includes('cloudinary')) {
+          try {
+            const publicId = school.image.split('/').pop().split('.')[0];
+            await cloudinary.uploader.destroy(`school_images/${publicId}`);
+          } catch (cleanupError) {
+            console.error('Error cleaning up image:', cleanupError);
+          }
+        }
       }
 
       res.status(200).json({
@@ -250,7 +305,7 @@ static async getAllSchools(req, res) {
     }
   }
 
- 
+
   static async getSchoolsByCity(req, res) {
     try {
       const { city } = req.params;
@@ -281,7 +336,6 @@ static async getAllSchools(req, res) {
     }
   }
 
-  
   static async getSchoolsByState(req, res) {
     try {
       const { state } = req.params;
@@ -312,7 +366,6 @@ static async getAllSchools(req, res) {
     }
   }
 }
-
 
 module.exports = {
   SchoolController,

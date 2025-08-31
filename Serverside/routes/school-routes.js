@@ -2,6 +2,7 @@
 const express = require('express');
 const multer = require('multer');
 const { SchoolController, uploadMiddleware } = require('../controllers/SchoolController.js');
+const { regenerateDescription } = require('../config/geminiClient.js');
 
 const router = express.Router();
 
@@ -47,6 +48,7 @@ router.get('/city/:city', SchoolController.getSchoolsByCity);
 
 router.get('/state/:state', SchoolController.getSchoolsByState);
 
+router.post('/:id/regenerate-description',regenerateDescription );
 
 
 module.exports = router;
